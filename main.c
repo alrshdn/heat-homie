@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <math.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -10,13 +9,13 @@
 #define		SET_POINT				22.0
 #define		MAX_FLUCTUATION			2.7778
 #define		HEATER_TEMP				50
-#define		COST					(0.09/3.6e6)
+#define		COST_RATE				(0.09/3.6e6)
 
 #define		DATA_CSV_FILE_RAW		"./data/temp_vasteras_hours.csv"
 #define		DATA_CSV_FILE_CLEAN		"./data/temperatures_clean.csv"
 #define		DATA_MAX_LENGTH			131391
 
-#define		RUNNING_HOURS			100
+#define		RUNNING_HOURS			131391
 
 /* structs */
 typedef struct {
@@ -150,21 +149,23 @@ main(void)
 		/* calculating heat emission and loss */
 		gain = calculate_heat_emission(&w);
 		loss = calculate_heat_loss(&w);
-		cost += gain * COST;
+		cost += gain * COST_RATE;
 
 		/* updating room temperature */
 		update_room_temp(&w, gain, loss);
 
 		/* printing the status */
-		printf("Epoch %d (Hour %d):\n", ++s, h);
-		printf("Heat emission:\t\t\t %.3f\n", gain);
-		printf("Heat loss:\t\t\t %.3f\n", loss);
-		print_world_status(&w);
+		// printf("Epoch %d (Hour %d):\n", s, h);
+		// printf("Heat emission:\t\t\t %.3f\n", gain);
+		// printf("Heat loss:\t\t\t %.3f\n", loss);
+		// print_world_status(&w);
 
 		/* per second (epoch) sleep */
 		/* sleep(1); */
+		s++;
 	}
 
+	printf("Epoch %d (Hour %d):\n", s, h);
 	printf("---------------------------------------------\n");
 	printf("Final temperaute:\t %0.3f°\n", w.room_temp);
 	printf("Total cost:\t\t %0.2f$\n", cost);
