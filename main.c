@@ -18,6 +18,7 @@
 
 #define		RUNNING_HOURS		100
 
+/* structs */
 typedef struct {
 	double room_temp;
 	bool heater_on;
@@ -25,10 +26,37 @@ typedef struct {
 } World;
 
 /* function declarations */
+static double calculate_heat_emission(World *w);
+static double calculate_heat_loss(World *w);
+static void print_world_status(World *w);
 static double run_heater(World *w);
-static bool run_thermostat(World *w);
+static double *read_data(void);
+static void toggle_heater_power(World *w, bool new_status);
+static void update_room_temp(World *w, double generated_heat, double heat_loss);
 
 /* function implementations */
+double
+calculate_heat_emission(World *w)
+{
+	/* heat generated from the heater */
+	return  w->heater_on * ((HEATER_TEMP - w->room_temp) * C * MDOT);
+}
+
+double
+calculate_heat_loss(World *w)
+{
+	/* heat loss from the environment */
+	return (w->room_temp - w->out_temp) / R_EQ;
+}
+
+void
+print_world_status(World *w)
+{
+	printf("Outer temperature\t\t %0.1f°\n", w->out_temp);
+	printf("Current room temperature:\t %.3f°\n", w->room_temp);
+	printf("Heater status:\t\t\t %d\n\n", w->heater_on);
+}
+
 bool
 run_thermostat(World *w)
 {
@@ -51,45 +79,11 @@ run_thermostat(World *w)
 	return w->heater_on;
 }
 
-double
-calculate_heat_emission(World *w)
-{
-	/* heat generated from the heater */
-	return  w->heater_on * ((HEATER_TEMP - w->room_temp) * C * MDOT);
-}
-
-double
-calculate_heat_loss(World *w)
-{
-	/* heat loss from the environment */
-	return (w->room_temp - w->out_temp) / R_EQ;
-}
-
-void
-update_room_temp(World *w, double generated_heat, double heat_loss)
-{
-	w->room_temp += (generated_heat - heat_loss) / (M * C);
-}
-
-void
-toggle_heater_power(World *w, bool new_status)
-{
-	w->heater_on = new_status;
-}
-
-void
-print_world_status(World *w)
-{
-	printf("Outer temperature\t\t %0.1f°\n", w->out_temp);
-	printf("Current room temperature:\t %.3f°\n", w->room_temp);
-	printf("Heater status:\t\t\t %d\n\n", w->heater_on);
-}
-
 double *
 read_data(void)
 {
 	FILE *fp;
-    char *line = NULL;
+	char *line = NULL;
     size_t len = 0;
     ssize_t read;
 	double *data = calloc(DATA_LENGTH, sizeof(double));
@@ -99,14 +93,28 @@ read_data(void)
       fprintf(stderr, "Failed to open %s: %s\n", DATA_FILE, strerror(errno));
     }
 
+	/* converting data points from strings to double */
 	for (size_t i = 0; (read = getline(&line, &len, fp)) != -1; ++i) {
 		data[i] = atof(line);
 	}
 
+	/* releasing the memory allocated for the reading the data file */
 	free(line);
 	fclose(fp);
 
 	return data;
+}
+
+void
+toggle_heater_power(World *w, bool new_status)
+{
+	w->heater_on = new_status;
+}
+
+void
+update_room_temp(World *w, double generated_heat, double heat_loss)
+{
+	w->room_temp += (generated_heat - heat_loss) / (M * C);
 }
 
 int
@@ -159,4 +167,3 @@ main(void)
 	free(data);
 	return 0;
 }
-
