@@ -7,16 +7,16 @@
 
 #include "housedefines.h"
 
-#define		SET_POINT			22.0
-#define		MAX_FLUCTUATION		2.7778
-#define		HEATER_TEMP			50
-#define		COST				(0.09/3.6e6)
+#define		SET_POINT				22.0
+#define		MAX_FLUCTUATION			2.7778
+#define		HEATER_TEMP				50
+#define		COST					(0.09/3.6e6)
 
-#define		DATA_CSV_FILE		"./data/temp_vasteras_hours.csv"
-#define		DATA_FILE			"./data/temperatures_clean.csv"
-#define		DATA_LENGTH			131391
+#define		DATA_CSV_FILE_RAW		"./data/temp_vasteras_hours.csv"
+#define		DATA_CSV_FILE_CLEAN		"./data/temperatures_clean.csv"
+#define		DATA_MAX_LENGTH			131391
 
-#define		RUNNING_HOURS		100
+#define		RUNNING_HOURS			100
 
 /* structs */
 typedef struct {
@@ -32,7 +32,7 @@ static void print_world_status(World *w);
 static double run_heater(World *w);
 static double *read_data(void);
 static void toggle_heater_power(World *w, bool new_status);
-static void update_room_temp(World *w, double generated_heat, double heat_loss);
+static void update_room_temp(World *w, double heat_gain, double heat_loss);
 
 /* function implementations */
 double
@@ -86,15 +86,18 @@ read_data(void)
 	char *line = NULL;
     size_t len = 0;
     ssize_t read;
-	double *data = calloc(DATA_LENGTH, sizeof(double));
+	static double data[RUNNING_HOURS] = {0};
+	/* or dynamically */
+	/* double *data = calloc(DATA_MAX_LENGTH, sizeof(double)); */
 
-    fp = fopen(DATA_FILE, "rb");
+    fp = fopen(DATA_CSV_FILE_CLEAN, "rb");
     if (!fp) {
-      fprintf(stderr, "Failed to open %s: %s\n", DATA_FILE, strerror(errno));
+      fprintf(stderr, "Failed to open %s: %s\n", DATA_CSV_FILE_CLEAN, strerror(errno));
     }
 
 	/* converting data points from strings to double */
-	for (size_t i = 0; (read = getline(&line, &len, fp)) != -1; ++i) {
+	for (size_t i = 0; ((read = getline(&line, &len, fp)) != -1) 
+			&& i < RUNNING_HOURS; ++i) {
 		data[i] = atof(line);
 	}
 
@@ -112,58 +115,61 @@ toggle_heater_power(World *w, bool new_status)
 }
 
 void
-update_room_temp(World *w, double generated_heat, double heat_loss)
+update_room_temp(World *w, double heat_gain, double heat_loss)
 {
-	w->room_temp += (generated_heat - heat_loss) / (M * C);
+	w->room_temp += (heat_gain - heat_loss) / (M * C);
 }
 
 int
 main(void)
 {
-	/* reading the temperature data */
-	double *data = read_data();
-
 	/* initializing the world */
 	World w = {
 		.room_temp = 20.0,
 		.heater_on = false,
 	};
 
-	size_t s = 0, h = 0;  /* seconds (epochs) and hours*/
-	double flow, loss;
+	/* reading the temperature data */
+	double *data = read_data();
+
+	size_t s = 0, h = 0;  /* seconds (epochs) and hours */
+	double gain, loss;
 	double cost = 0;
 	while (h < RUNNING_HOURS) {
 		/* updating the outer temperature every hour */ 
 		if (s % 3600 == 0) {
 			w.out_temp = data[h];
 			h++;
-			//sleep(1);
+			/* per hour sleep */
+			/* sleep(1); */
 		}
 
 		/* thermostat signaling to the heater */
 		toggle_heater_power(&w, run_thermostat(&w));
 
 		/* calculating heat emission and loss */
-		flow = calculate_heat_emission(&w);
+		gain = calculate_heat_emission(&w);
 		loss = calculate_heat_loss(&w);
-		cost += flow * COST;
+		cost += gain * COST;
 
 		/* updating room temperature */
-		update_room_temp(&w, flow, loss);
+		update_room_temp(&w, gain, loss);
 
 		/* printing the status */
 		printf("Epoch %d (Hour %d):\n", ++s, h);
-		printf("Heat emission:\t\t\t %.3f\n", flow);
+		printf("Heat emission:\t\t\t %.3f\n", gain);
 		printf("Heat loss:\t\t\t %.3f\n", loss);
 		print_world_status(&w);
 
-		//sleep(1);
+		/* per second (epoch) sleep */
+		/* sleep(1); */
 	}
 
 	printf("---------------------------------------------\n");
 	printf("Final temperaute:\t %0.3f°\n", w.room_temp);
 	printf("Total cost:\t\t %0.2f$\n", cost);
 
-	free(data);
+	/* if `data` is allocated dynamically: */
+	/* free(data); */
 	return 0;
 }
