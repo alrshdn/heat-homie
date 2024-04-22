@@ -4,13 +4,13 @@
 ```
 git clone https://github.com/alrshdn/heat-homie.git
 ```  
-2. Run the build.sh script:
+2. Run the **build.sh** script:
 ```
 sh build.sh
 ```
 
 ## Run
-Simply run the generated simulation binary:
+After building the program, simply run the generated **simulation** binary:
 ```
 ./simulation
 ```
